@@ -15,7 +15,7 @@ let round = 0;
 const totalRounds = 10;
 let roundInProgress = false;
 let initialPlayerRates = {}; // Store rates *before* event for comparison/display
-let historicalRates = []; // Stores { code: { rate, volatility, interest_rate } } snapshots
+let historicalRates = []; // Stores { code: { open, high, low, close, volatility, interest_rate } } snapshots
 const maxHistoryPoints = 15; // NEW: Max history points for chart
 
 // NEW: Spread configuration (e.g., 0.05% base spread + volatility factor)
@@ -28,6 +28,10 @@ let usedMargin = 0;
 let freeMargin = 0;
 let marginLevel = Infinity; // Margin Level % (Equity / Used Margin * 100)
 let playedMarginWarningThisRound = false; // NEW: Flag for margin warning sound
+let commissionsPaidThisRound = 0; // NEW: Track round commissions
+
+// --- Commission Setting ---
+const commissionPerTradeUSD = 0.50; // Example: $0.50 per executed trade
 
 // --- Difficulty Settings ---
 const difficulties = {
@@ -346,61 +350,82 @@ function displayPortfolio() {
     // --- End Margin Display Update --- 
 }
 
-// NEW: Renders a simple SVG line chart for historical rates
-function renderRateChart(containerElement, rateHistory) {
+// NEW: Renders a simple SVG Candlestick chart
+function renderCandlestickChart(containerElement, ohlcHistory) {
     containerElement.innerHTML = ''; // Clear previous chart
-    if (!rateHistory || rateHistory.length < 2) {
-        containerElement.textContent = '-'; // Not enough data
+    if (!ohlcHistory || ohlcHistory.length === 0) {
+        containerElement.textContent = '-';
         return;
     }
 
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
-    const padding = 2; // Reduced padding
-    const chartWidth = 100; // SVG internal width
-    const chartHeight = 25; // SVG internal height
-    svg.setAttribute("viewBox", `0 0 ${chartWidth} ${chartHeight}`);
-    svg.style.width = "100%"; // Make it responsive within its container
-    svg.style.height = "25px"; // Fixed height for consistency
-    svg.style.overflow = "visible"; // Allow stroke to go slightly outside bounds if needed
+    const padding = { top: 5, bottom: 5, left: 2, right: 2 }; // Padding around chart area
+    const svgWidth = 150; // Wider SVG for candlesticks
+    const svgHeight = 40;  // Slightly taller SVG
+    svg.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+    svg.style.width = "100%";
+    svg.style.height = "40px";
+    svg.style.overflow = "visible";
 
-    // Find min/max rates in the history slice for scaling
-    const rates = rateHistory.map(r => r.rate);
-    let minRate = Math.min(...rates);
-    let maxRate = Math.max(...rates);
-    const rateRange = maxRate - minRate;
+    // Find overall min/max across all High/Low values in the history slice
+    const allLows = ohlcHistory.map(d => d.low);
+    const allHighs = ohlcHistory.map(d => d.high);
+    let minPrice = Math.min(...allLows);
+    let maxPrice = Math.max(...allHighs);
+    const priceRange = maxPrice - minPrice;
 
-    // Add tiny padding to min/max to prevent flat lines touching edges
-    const verticalPadding = rateRange * 0.1; // 10% padding
-    minRate -= verticalPadding;
-    maxRate += verticalPadding;
-    // Recalculate range with padding
-    const paddedRateRange = maxRate - minRate;
+    // Add padding to price range for better visualization
+    const verticalPadding = priceRange * 0.1;
+    minPrice -= verticalPadding;
+    maxPrice += verticalPadding;
+    const paddedPriceRange = maxPrice - minPrice;
 
-    // Handle zero range after padding (highly unlikely but safe)
-    if (paddedRateRange === 0) {
-        minRate -= 0.001; // Add small range
-        maxRate += 0.001;
+    // Handle zero range
+    if (paddedPriceRange <= 0) {
+        minPrice -= 0.01; // Add arbitrary range
+        maxPrice += 0.01;
     }
 
-    // Calculate points for the polyline
-    const points = rateHistory.map((dataPoint, index) => {
-        const x = padding + (index / (rateHistory.length - 1)) * (chartWidth - 2 * padding);
-        const yValue = dataPoint.rate;
-        // Scale y-coordinate (inverted y-axis in SVG)
-        const y = (chartHeight - padding) - ((yValue - minRate) / (maxRate - minRate)) * (chartHeight - 2 * padding);
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
+    const chartWidth = svgWidth - padding.left - padding.right;
+    const chartHeight = svgHeight - padding.top - padding.bottom;
+    const candleWidth = Math.max(2, (chartWidth / ohlcHistory.length) * 0.7); // 70% of available space per candle
+    const candleSpacing = (chartWidth / ohlcHistory.length) * 0.3;
 
-    const polyline = document.createElementNS(svgNS, "polyline");
-    polyline.setAttribute("points", points);
-    polyline.setAttribute("fill", "none");
-    polyline.setAttribute("stroke", "#3498db"); // Blue line color
-    polyline.setAttribute("stroke-width", "1.5");
-    polyline.setAttribute("stroke-linecap", "round");
-    polyline.setAttribute("stroke-linejoin", "round");
+    // Function to scale price to Y coordinate
+    const scaleY = (price) => padding.top + chartHeight - ((price - minPrice) / (maxPrice - minPrice)) * chartHeight;
 
-    svg.appendChild(polyline);
+    // Draw candles
+    ohlcHistory.forEach((data, index) => {
+        const x = padding.left + index * (candleWidth + candleSpacing) + candleSpacing / 2;
+        const openY = scaleY(data.open);
+        const closeY = scaleY(data.close);
+        const highY = scaleY(data.high);
+        const lowY = scaleY(data.low);
+
+        const isBullish = data.close >= data.open;
+        const color = isBullish ? '#2ecc71' : '#e74c3c'; // Green for up, Red for down
+
+        // Draw wick (High/Low line)
+        const wick = document.createElementNS(svgNS, "line");
+        wick.setAttribute("x1", x + candleWidth / 2);
+        wick.setAttribute("y1", highY);
+        wick.setAttribute("x2", x + candleWidth / 2);
+        wick.setAttribute("y2", lowY);
+        wick.setAttribute("stroke", color);
+        wick.setAttribute("stroke-width", "1");
+        svg.appendChild(wick);
+
+        // Draw body (Open/Close rectangle)
+        const body = document.createElementNS(svgNS, "rect");
+        body.setAttribute("x", x);
+        body.setAttribute("y", Math.min(openY, closeY));
+        body.setAttribute("width", candleWidth);
+        body.setAttribute("height", Math.max(1, Math.abs(openY - closeY))); // Min height of 1px
+        body.setAttribute("fill", color);
+        svg.appendChild(body);
+    });
+
     containerElement.appendChild(svg);
 }
 
@@ -422,7 +447,7 @@ function displayCurrenciesAndTrade() {
     currencyListElement.appendChild(headerLi);
 
     const historyDepth = historicalRates.length;
-    const relevantHistory = historicalRates.slice(-maxHistoryPoints);
+    const relevantHistory = historicalRates.slice(-maxHistoryPoints); // Use OHLC data now
 
     for (const code in currencies) {
         if (code === 'USD') continue;
@@ -430,7 +455,7 @@ function displayCurrenciesAndTrade() {
         const currency = currencies[code];
         const { bid, ask, mid } = getBidAsk(code);
 
-        const currencyHistory = relevantHistory.map(snap => snap[code]).filter(Boolean);
+        const currencyOHLCHistory = relevantHistory.map(snap => snap[code]).filter(Boolean);
 
         const midRateBeforeCurrentEvent = initialPlayerRates[code] ?? mid;
         const change = mid - midRateBeforeCurrentEvent;
@@ -467,8 +492,9 @@ function displayCurrenciesAndTrade() {
         `;
         currencyListElement.appendChild(li);
 
+        // Call the NEW candlestick chart function
         const chartContainer = li.querySelector('.rate-chart-container');
-        renderRateChart(chartContainer, currencyHistory);
+        renderCandlestickChart(chartContainer, currencyOHLCHistory);
     }
 }
 
@@ -577,7 +603,7 @@ function processTrades() {
     displayPortfolio();
 }
 
-// Update handleTradeAction to read/set SL/TP
+// Updated handleTradeAction to deduct commission
 function handleTradeAction(event) {
     if (!roundInProgress) return;
     if (!event.target.matches('.trade-btn')) return;
@@ -666,8 +692,12 @@ function handleTradeAction(event) {
     // Update portfolio display (incl. margin check)
     displayPortfolio();
 
+    // Deduct commission if trade happened
     if (tradeExecuted) {
-        playSound('trade_confirm.wav'); // Play sound on success
+        playerPortfolio.USD -= commissionPerTradeUSD;
+        commissionsPaidThisRound += commissionPerTradeUSD;
+        console.log(`Commission charged: $${commissionPerTradeUSD.toFixed(2)}`);
+        playSound('trade_confirm.wav');
     }
 }
 
@@ -716,112 +746,78 @@ function finalizeRound() {
     // Apply Event/Indicator Effects
     applyEventEffects(currentEvent, currentIndicators);
 
-    // --- Check SL/TP Orders --- 
-    console.log("Checking Stop Loss / Take Profit orders...");
-    let ordersTriggered = false;
-    for (const code in playerPortfolio) {
-        if (code === 'USD' || playerPortfolio[code].amount === 0) continue;
-
-        const position = playerPortfolio[code];
-        const { bid, ask } = getBidAsk(code); // Get current prices AFTER event effects
-
-        let closePosition = false;
-        let closeReason = '';
-
-        // Check Stop Loss
-        if (position.stopLoss !== null) {
-            if (position.amount > 0 && bid <= position.stopLoss) { // Long position hits SL
-                closePosition = true;
-                closeReason = `Stop Loss triggered at ${bid.toFixed(4)} (<= ${position.stopLoss.toFixed(4)})`;
-            } else if (position.amount < 0 && ask >= position.stopLoss) { // Short position hits SL
-                closePosition = true;
-                closeReason = `Stop Loss triggered at ${ask.toFixed(4)} (>= ${position.stopLoss.toFixed(4)})`;
-            }
-        }
-
-        // Check Take Profit (only if SL wasn't hit)
-        if (!closePosition && position.takeProfit !== null) {
-            if (position.amount > 0 && bid >= position.takeProfit) { // Long position hits TP
-                closePosition = true;
-                closeReason = `Take Profit triggered at ${bid.toFixed(4)} (>= ${position.takeProfit.toFixed(4)})`;
-            } else if (position.amount < 0 && ask <= position.takeProfit) { // Short position hits TP
-                closePosition = true;
-                closeReason = `Take Profit triggered at ${ask.toFixed(4)} (<= ${position.takeProfit.toFixed(4)})`;
-            }
-        }
-
-        // Execute Closing Trade if Triggered
-        if (closePosition) {
-            console.log(`Closing position for ${code}: ${closeReason}`);
-            ordersTriggered = true;
-            const amountToClose = position.amount;
-            if (amountToClose > 0) { // Close long position by selling
-                const rate = bid;
-                playerPortfolio.USD += (amountToClose / rate);
-            } else { // Close short position by buying
-                const rate = ask;
-                playerPortfolio.USD -= (Math.abs(amountToClose) / rate);
-            }
-            // Reset position
-            position.amount = 0;
-            position.stopLoss = null;
-            position.takeProfit = null;
-        }
-    }
-    if (ordersTriggered) {
-        console.log("Portfolio after SL/TP closures:", playerPortfolio);
-    }
-    // --- End Order Check --- 
-
-    // Store History
+    // --- Store History (with OHLC) --- 
     const ratesSnapshot = {};
-    for (const code in currencies) { // Use the updated currencies object
-        ratesSnapshot[code] = { rate: currencies[code].rate, volatility: currencies[code].volatility, interest_rate: currencies[code].interest_rate };
+    for (const code in currencies) {
+        if (code === 'USD') continue; // Don't store OHLC for USD
+
+        const currentRateData = currencies[code];
+        const openRate = initialPlayerRates[code] ?? currentRateData.rate; // Rate at start of round
+        const closeRate = currentRateData.rate; // Rate after effects
+        const volatility = currentRateData.volatility;
+
+        // Simulate High/Low based on Open/Close and Volatility
+        // Simple simulation: range is proportional to volatility and price move
+        const priceMove = Math.abs(closeRate - openRate);
+        const randomFactor = 0.5 + Math.random() * 0.5; // Add some randomness (0.5 to 1.0)
+        const highLowSpread = (priceMove + volatility * openRate * 5) * randomFactor; // Adjust multiplier '5' as needed
+        
+        const high = Math.max(openRate, closeRate) + highLowSpread / 2;
+        const low = Math.min(openRate, closeRate) - highLowSpread / 2;
+
+        ratesSnapshot[code] = {
+            open: parseFloat(openRate.toFixed(4)),
+            high: parseFloat(high.toFixed(4)),
+            low: parseFloat(Math.max(0.0001, low.toFixed(4))), // Ensure low is positive
+            close: parseFloat(closeRate.toFixed(4)),
+            volatility: currentRateData.volatility,
+            interest_rate: currentRateData.interest_rate
+        };
     }
     historicalRates.push(JSON.parse(JSON.stringify(ratesSnapshot)));
     if (historicalRates.length > maxHistoryPoints) {
         historicalRates.shift();
     }
-    console.log(`Stored historical data for end of round ${round}. History size: ${historicalRates.length}`);
+    console.log(`Stored OHLC historical data for end of round ${round}.`);
     // --- End History Storage ---
 
     // --- Final Valuation & PNL Calculation ---
-    const finalPortfolioValue = calculatePortfolioValue(currencies); // Final Equity
+    const finalPortfolioValue = calculatePortfolioValue(currencies);
     console.log(`Final Equity (after rate changes): $${finalPortfolioValue.toFixed(2)}`);
 
-    // PNL Calculation
-    const totalRoundPnl = finalPortfolioValue - valueBeforeRateEffects; // Total change this round
-    const roundPnl_RateChange = totalRoundPnl - interestEarnedPaid;
+    // PNL Calculation (Revised for clarity)
+    // valueBeforeRateEffects was calculated using startRates *before* SL/TP trades & commissions
+    const valueAtStartOfFinalize = valueBeforeRateEffects; // Value after interest, before SL/TP and rate changes
+    const netRoundPnl = finalPortfolioValue - valueAtStartOfFinalize; // Total change including market, interest, commissions, SL/TP impact
+
+    // Breakdown components:
+    const marketGainLoss = netRoundPnl - interestEarnedPaid + commissionsPaidThisRound; // Total change minus cashflows
     const totalPnl_Overall = finalPortfolioValue - initialPortfolioValue;
     // --- End Final Valuation & PNL ---
 
-    // --- Update UI ---
-    displayPortfolio(); // Recalculates and displays final equity, margin etc.
+    // --- Update UI & Check Margin Call ---
+    displayPortfolio(); // Reflects final state, checks margin
 
-    resultsDisplayElement.style.display = 'block';
-    currencyListElement.style.display = 'none';
-
-    roundSummaryElement.textContent = `Round ${round} P/L: \$${totalRoundPnl.toFixed(2)}`;
-    resultDetailsElement.innerHTML = `
-        <li>Market Gain/Loss: \$${roundPnl_RateChange.toFixed(2)}</li>
-        <li>Interest Earned/Paid: \$${interestEarnedPaid.toFixed(2)}</li>
-        <li>Total P/L (Game): \$${totalPnl_Overall.toFixed(2)}</li>
-    `;
-    roundSummaryElement.className = totalRoundPnl >= 0 ? 'pnl-positive' : 'pnl-negative';
-
-    console.log(`Round ${round} finished. Rate P/L: ${roundPnl_RateChange.toFixed(2)}, Interest P/L: ${interestEarnedPaid.toFixed(2)}, Total Round P/L: ${totalRoundPnl.toFixed(2)}, Overall P/L: ${totalPnl_Overall.toFixed(2)}`);
-    // --- End UI Update ---
-
-    // Next Round Button Logic
-    if (round < totalRounds) {
-        nextRoundButton.style.display = 'block';
-    } else {
-        nextRoundButton.style.display = 'none';
-        endGame();
+    if (roundInProgress) { 
+        roundSummaryElement.textContent = `Round ${round} Net P/L: \$${netRoundPnl.toFixed(2)}`;
+        resultDetailsElement.innerHTML = `
+            <li>Market Gain/Loss: \$${marketGainLoss.toFixed(2)}</li>
+            <li>Interest Earned/Paid: \$${interestEarnedPaid.toFixed(2)}</li>
+            <li>Commissions Paid: \$${commissionsPaidThisRound.toFixed(2)}</li>
+            <li>-------</li>
+            <li>Total P/L (Game): \$${totalPnl_Overall.toFixed(2)}</li>
+        `;
+        roundSummaryElement.className = netRoundPnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+        console.log(`Round ${round} finished. Market G/L: ${marketGainLoss.toFixed(2)}, Interest: ${interestEarnedPaid.toFixed(2)}, Commissions: ${commissionsPaidThisRound.toFixed(2)}, Net Round P/L: ${netRoundPnl.toFixed(2)}, Overall P/L: ${totalPnl_Overall.toFixed(2)}`);
+        playSound('round_end.wav'); 
+        // Next Round Button Logic
+        if (round < totalRounds) {
+            nextRoundButton.style.display = 'block';
+        } else {
+            nextRoundButton.style.display = 'none';
+            endGame();
+        }
     }
-    // --- End Next Round Button Logic ---
-
-    playSound('round_end.wav'); // Play sound when results are shown
 }
 
 function nextRound() {
@@ -838,7 +834,8 @@ function nextRound() {
     }
 
     roundInProgress = true;
-    playedMarginWarningThisRound = false; // Reset margin warning flag
+    playedMarginWarningThisRound = false;
+    commissionsPaidThisRound = 0; // Reset commissions for the new round
 
     // Store the current MID rates *before* the event/indicator for change comparison
     initialPlayerRates = {};
@@ -914,12 +911,24 @@ function endGame(isMarginCall = false) {
 }
 
 // --- Initialization ---
+// Store DOM elements globally after first fetch
+let fetchedDomElements = false;
+
+// Initial setup: Add listeners for difficulty buttons
 function setupDifficultySelection() {
     difficultySelectionElement = document.getElementById('difficulty-selection');
-    gameContainerElement = document.querySelector('.game-container'); // Get main game area
+    gameContainerElement = document.querySelector('.game-container'); 
     
+    if (!difficultySelectionElement || !gameContainerElement) {
+        console.error("Critical error: Could not find difficulty selection or game container elements!");
+        return;
+    }
+
     // Hide game container initially
     gameContainerElement.style.display = 'none';
+
+    // Clear any existing buttons (if setup is called multiple times)
+    difficultySelectionElement.innerHTML = '<h2>Select Difficulty</h2>'; 
 
     Object.keys(difficulties).forEach(key => {
         const button = document.createElement('button');
@@ -929,8 +938,31 @@ function setupDifficultySelection() {
         });
         difficultySelectionElement.appendChild(button);
     });
+    
+    // Fetch structural elements once here (needed for listeners)
+    currencyListElement = document.getElementById('currency-list');
+    tradeButtonElement = document.getElementById('finalize-trades-btn');
+    nextRoundButton = document.getElementById('next-round-btn');
+
+    // Attach listeners ONCE
+    if (currencyListElement && tradeButtonElement && nextRoundButton && !currencyListElement.dataset.listenerAttached) {
+        currencyListElement.addEventListener('click', handleTradeAction);
+        tradeButtonElement.addEventListener('click', () => { 
+             if (!roundInProgress) return;
+             tradeButtonElement.style.display = 'none';
+             finalizeRound(); 
+         });
+        nextRoundButton.addEventListener('click', () => { 
+             if (!roundInProgress) nextRound(); 
+         });
+        currencyListElement.dataset.listenerAttached = 'true'; // Mark as attached
+        console.log("Core event listeners attached.");
+    } else if (!currencyListElement || !tradeButtonElement || !nextRoundButton) {
+        console.error("Could not find core elements needed for event listeners!");
+    }
 }
 
+// Updated initializeGame to accept difficulty
 function initializeGame(difficultyKey = 'normal') {
     console.log(`Initializing game with difficulty: ${difficultyKey}`);
     selectedDifficulty = difficulties[difficultyKey];
@@ -938,16 +970,15 @@ function initializeGame(difficultyKey = 'normal') {
 
     // Hide difficulty selection, show game container
     if (difficultySelectionElement) difficultySelectionElement.style.display = 'none';
-    gameContainerElement.style.display = 'block';
+    if (gameContainerElement) gameContainerElement.style.display = 'block';
+    else { console.error("Game container not found!"); return; }
 
     // Deep copies for game state
     currencies = JSON.parse(JSON.stringify(initialCurrencies));
-    // Set starting USD based on difficulty
     playerPortfolio = JSON.parse(JSON.stringify(baseStartingPortfolio));
     playerPortfolio.USD = selectedDifficulty.startingUSD;
 
-    // Calculate initial portfolio value (Equity)
-    initialPortfolioValue = calculatePortfolioValue(currencies); // Value is initially just cash
+    initialPortfolioValue = calculatePortfolioValue(currencies);
     currentPortfolioValue = initialPortfolioValue;
     console.log(`Initial Equity: $${initialPortfolioValue.toFixed(2)}`);
 
@@ -956,46 +987,42 @@ function initializeGame(difficultyKey = 'normal') {
     historicalRates = [];
     currentEvent = null;
     currentIndicators = null;
-    roundInProgress = false; // Ensure reset
+    roundInProgress = false; 
     usedMargin = 0;
     freeMargin = initialPortfolioValue;
     marginLevel = Infinity;
+    playedMarginWarningThisRound = false;
 
-    // Get DOM elements (if not already fetched globally)
+    // Get (or re-get) ALL dynamic display DOM elements NOW
     portfolioValueElement = document.getElementById('portfolio-value');
     pnlElement = document.getElementById('pnl-display');
     portfolioDisplayElement = document.getElementById('portfolio-display');
     eventDescriptionElement = document.getElementById('event-description');
-    newsFeedElement = document.getElementById('news-feed');
-    sentimentIndicatorElement = document.getElementById('sentiment-indicator');
-    currencyListElement = document.getElementById('currency-list');
-    tradeButtonElement = document.getElementById('finalize-trades-btn');
+    newsFeedElement = document.getElementById('news-feed'); 
+    sentimentIndicatorElement = document.getElementById('sentiment-indicator'); 
+    // Core elements for listeners fetched earlier in setupDifficultySelection
+    // currencyListElement, tradeButtonElement, nextRoundButton 
     resultsDisplayElement = document.getElementById('results-display');
     roundSummaryElement = document.getElementById('round-summary');
     resultDetailsElement = document.getElementById('result-details');
-    nextRoundButton = document.getElementById('next-round-btn');
-
-    // Setup Event Listeners (ensure this runs only once or is safe)
-    if (!tradeButtonElement.dataset.listenerAttached) { // Prevent duplicate listeners
-        currencyListElement.addEventListener('click', handleTradeAction);
-        tradeButtonElement.addEventListener('click', () => {
-        if (!roundInProgress) return;
-            tradeButtonElement.style.display = 'none'; // Hide finalize button after click
-            processTrades(); // Process any final input states (though logic moved to handleTradeAction mostly)
-            finalizeRound(); // Apply event, calculate P&L, show results
-        });
-        nextRoundButton.addEventListener('click', () => { if (!roundInProgress) nextRound(); });
-        tradeButtonElement.dataset.listenerAttached = 'true'; // Mark as attached
+    
+    // Verify crucial elements were found
+    if (!portfolioValueElement || !eventDescriptionElement || !currencyListElement || !tradeButtonElement || !resultsDisplayElement || !nextRoundButton) {
+        console.error("One or more critical UI elements could not be found after initialization!");
+        // Optionally display an error to the user
+        return; 
     }
+    fetchedDomElements = true;
 
     // Initial UI setup
-    displayPortfolio();
-    resultsDisplayElement.style.display = 'none'; // Hide results initially
-    nextRoundButton.style.display = 'none'; // Hide next round initially
-    tradeButtonElement.style.display = 'none'; // Hide finalize initially
+    displayPortfolio(); 
+    resultsDisplayElement.style.display = 'none';
+    nextRoundButton.style.display = 'none';
+    tradeButtonElement.style.display = 'none';
 
     // Start the first round
-    nextRound();
+    console.log("Starting first round...");
+    nextRound(); 
 }
 
 // Start by setting up difficulty selection
