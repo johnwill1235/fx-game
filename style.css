@@ -1,0 +1,521 @@
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f7f6;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.game-container {
+    max-width: 900px;
+    width: 95%;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 20px;
+}
+
+h2 {
+    color: #34495e;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-top: 30px;
+}
+
+h3 {
+    color: #555;
+    margin-bottom: 5px;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+/* Status Bar & Portfolio */
+.status-bar {
+    background-color: #ecf0f1;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.portfolio-summary span {
+    margin-right: 20px;
+    font-size: 1.1em;
+}
+
+#portfolio-value {
+    font-weight: bold;
+}
+
+#pnl-display {
+    font-weight: bold;
+}
+
+.pnl-positive {
+    color: #28a745; /* Green */
+}
+
+.pnl-negative {
+    color: #dc3545; /* Red */
+}
+
+#portfolio-display {
+    /* Container for both holdings and margin */
+    display: flex;
+    flex-direction: column; /* Stack holdings and margin */
+    gap: 10px;
+}
+
+#portfolio-display h3 {
+    margin-bottom: 3px;
+    font-size: 1em;
+    color: #34495e;
+}
+
+#portfolio-display ul {
+    margin-top: 0;
+    padding-left: 5px; /* Slight indent */
+}
+
+#portfolio-display li {
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 3px;
+}
+
+/* Styling for the new Margin Info list */
+#portfolio-display ul.margin-info {
+    border-top: 1px solid #bdc3c7; /* Separator line */
+    padding-top: 10px;
+    margin-top: 5px;
+}
+
+#portfolio-display ul.margin-info li {
+    font-size: 0.9em;
+    /* Optional: Use different colors or bolding for specific margin stats */
+}
+
+#portfolio-display ul.margin-info li:last-child { /* Margin Level */
+    font-weight: bold;
+}
+
+/* Event Section */
+.event-section {
+    flex: 2; /* Take more space */
+    margin-bottom: 0; /* Remove bottom margin as it's handled by container */
+    padding: 15px;
+    background-color: #eaf2f8;
+    border-left: 5px solid #5dade2;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column; /* Stack sentiment and event desc */
+}
+
+.event-section h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.sentiment-display {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #ccc;
+}
+
+#sentiment-indicator {
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+}
+
+/* Sentiment Indicator Colors */
+.sentiment-strong-bullish { background-color: #1e8449; } /* Dark Green */
+.sentiment-bullish { background-color: #2ecc71; } /* Green */
+.sentiment-neutral { background-color: #7f8c8d; } /* Grey */
+.sentiment-bearish { background-color: #e74c3c; } /* Red */
+.sentiment-strong-bearish { background-color: #c0392b; } /* Dark Red */
+
+#event-description p {
+    margin: 8px 0;
+}
+
+/* News Feed */
+#news-feed {
+    flex: 1; /* Take less space */
+    background-color: #fdfefe;
+    border: 1px solid #e5e7e9;
+    border-radius: 4px;
+    padding: 10px 15px;
+    max-height: 200px; /* Limit height */
+    overflow-y: auto; /* Add scrollbar if needed */
+}
+
+#news-feed h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1em;
+    color: #34495e;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+}
+
+#news-feed ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#news-feed li {
+    font-size: 0.85em;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px dotted #eee;
+    line-height: 1.3;
+}
+#news-feed li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* News Impact Styling */
+#news-feed li.impact-major {
+    font-weight: bold;
+    color: #c0392b; /* Emphasize major news */
+}
+
+#news-feed li.impact-minor {
+    color: #7f8c8d; /* De-emphasize minor news */
+}
+
+#news-feed li.impact-noise {
+    color: #bdc3c7; /* Make noise very subtle */
+    font-style: italic;
+}
+
+/* Trading Section - Currency List */
+.trading-section {
+    margin-bottom: 20px;
+}
+
+#currency-list li {
+    display: grid;
+    /* Columns: Name, Bid, Ask, Chart, Int Rate, Volatility, Trade/Orders */
+    grid-template-columns: 1.5fr 1fr 1fr 1.5fr 0.8fr 0.8fr 2.5fr; /* Wider last column */
+    gap: 8px;
+    padding: 8px 5px;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+    font-size: 0.9em;
+}
+
+#currency-list li:last-child {
+    border-bottom: none;
+}
+
+/* Header styling */
+#currency-list .currency-header-trade {
+    font-weight: bold;
+    color: #555;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 8px;
+    margin-bottom: 5px;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1.5fr 0.8fr 0.8fr 2.5fr; /* Match row columns */
+    gap: 8px;
+    font-size: 0.85em; /* Adjusted font size */
+}
+
+#currency-list .currency-header-trade span {
+     text-align: center;
+     overflow: hidden;
+     text-overflow: ellipsis;
+     white-space: nowrap;
+}
+#currency-list .currency-header-trade span:first-child {
+     text-align: left;
+}
+#currency-list .currency-header-trade span:nth-child(7) { /* Trade Action Header */
+    text-align: center;
+}
+
+/* Align columns within each currency row */
+#currency-list li span:nth-child(1) { /* Currency Name */
+    text-align: left;
+    font-weight: bold;
+}
+#currency-list li span:nth-child(2) { /* Bid Price */
+    text-align: center;
+    color: #c0392b;
+}
+#currency-list li span:nth-child(3) { /* Ask Price */
+    text-align: center;
+    color: #27ae60;
+    font-weight: bold;
+}
+#currency-list li div:nth-child(4) { /* Chart Container */
+    text-align: center;
+    min-width: 70px;
+}
+#currency-list li span:nth-child(5) { /* Interest Rate */
+    text-align: center;
+    font-size: 0.95em;
+    color: #34495e;
+}
+#currency-list li span:nth-child(6) { /* Volatility */
+    text-align: center;
+    font-size: 0.9em;
+    color: #666;
+}
+#currency-list li span:nth-child(7).trade-controls { /* Trade Controls Span - nth-child updated */
+    display: flex;
+    flex-direction: column; /* Stack inputs and buttons */
+    gap: 4px;
+    align-items: stretch; /* Stretch items */
+    text-align: left; /* Align content left within the cell */
+    justify-content: center;
+}
+
+.trade-inputs {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap; /* Allow wrapping if needed */
+}
+
+.trade-inputs input[type="number"] {
+    flex: 1; /* Allow inputs to grow */
+    min-width: 60px; /* Minimum width */
+    padding: 4px;
+    font-size: 0.9em;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    text-align: right;
+}
+.trade-inputs input::placeholder {
+    font-size: 0.85em; /* Smaller placeholder */
+    text-align: left;
+}
+.trade-inputs input:disabled {
+    background-color: #eee;
+    cursor: not-allowed;
+}
+
+.trade-buttons {
+    display: flex;
+    gap: 5px;
+    align-items: center; /* Align buttons and status text */
+}
+
+.trade-buttons .trade-btn {
+     flex-shrink: 0; /* Prevent buttons shrinking too much */
+}
+
+.order-status {
+    font-size: 0.8em;
+    color: #555;
+    margin-left: 5px;
+    white-space: nowrap; /* Prevent status wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1; /* Allow status to take remaining space */
+    text-align: right;
+}
+
+.rate-chart-container {
+    /* Styles for the container holding the SVG */
+    width: 100%;
+    height: 25px; /* Match SVG height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rate-chart-container svg {
+    /* Optional: Styles specific to the SVG element itself */
+    max-width: 100%;
+    height: auto; /* Maintain aspect ratio if container resizes */
+}
+
+/* Specific styling for bid/ask if needed */
+.bid-price {
+    /* font-size: 0.98em; */
+}
+.ask-price {
+    /* font-size: 0.98em; */
+}
+
+.historical-rate {
+    opacity: 0.85;
+}
+
+.trade-controls input.trade-amount {
+    width: 70px; /* Slightly smaller */
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.trade-btn {
+    padding: 4px 8px; /* Slightly smaller */
+    border: none;
+    border-radius: 3px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.trade-btn.buy {
+    background-color: #28a745; /* Green */
+}
+.trade-btn.buy:hover {
+    background-color: #218838;
+}
+
+.trade-btn.sell {
+    background-color: #dc3545; /* Red */
+}
+.trade-btn.sell:hover {
+    background-color: #c82333;
+}
+
+/* Rate change indicators */
+.rate-up {
+    color: #28a745; /* Green */
+    font-weight: bold;
+}
+
+.rate-down {
+    color: #dc3545; /* Red */
+    font-weight: bold;
+}
+
+/* Buttons */
+button {
+    padding: 10px 15px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 10px;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+#finalize-trades-btn {
+    background-color: #e67e22; /* Orange */
+    display: block; /* Make it block level */
+    margin: 15px auto; /* Center it */
+}
+
+#finalize-trades-btn:hover {
+    background-color: #d35400;
+}
+
+/* Results Section */
+#results-display {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+#results-display h2 {
+    margin-top: 0;
+}
+
+#round-summary {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#result-details li {
+    margin-bottom: 5px;
+    font-size: 0.95em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 950px) { /* Adjusted breakpoint */
+    .status-bar {
+        flex-direction: column;
+    }
+    #currency-list li,
+    #currency-list .currency-header-trade {
+         /* Show Name, Bid, Ask, Trade/Orders */
+         grid-template-columns: 1.5fr 1fr 1fr 2.5fr;
+         gap: 8px;
+    }
+    /* Hide Chart, Interest Rate, Volatility on small screens */
+    #currency-list li div:nth-child(4),   /* Chart Container */
+    #currency-list li span:nth-child(5),   /* Interest Rate */
+    #currency-list li span:nth-child(6),   /* Volatility */
+    #currency-list .currency-header-trade span:nth-child(4), /* Chart Header */
+    #currency-list .currency-header-trade span:nth-child(5), /* Int Rate Header */
+    #currency-list .currency-header-trade span:nth-child(6)  /* Volatility Header */
+    {
+        display: none;
+    }
+
+    /* Adjust Trade Controls column index */
+    #currency-list li span:nth-child(7).trade-controls {
+        grid-column: 4 / 5; /* Ensure it stays in the last column */
+        text-align: left !important;
+    }
+}
+
+/* Difficulty Selection Styles */
+#difficulty-selection {
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+#difficulty-selection h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #34495e;
+    border-bottom: none; /* Remove border from this h2 */
+}
+
+#difficulty-selection button {
+    padding: 12px 25px;
+    font-size: 1.1em;
+    margin: 0 10px;
+    min-width: 100px;
+    /* Use different colors maybe? */
+}
+
+/* Market Info Layout */
+.market-info-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+} 

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FX Trading Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="difficulty-selection">
+        <h2>Select Difficulty</h2>
+        <!-- Buttons will be added here by script.js -->
+    </div>
+
+    <div class="game-container" style="display: none;"> <!-- Initially hidden -->
+        <h1>FX Trading Simulation</h1>
+
+        <div class="status-bar">
+            <div class="portfolio-summary">
+                <span>Equity: <strong id="portfolio-value">$0.00</strong></span>
+                <span id="pnl-display">P/L: $0.00 (0.00%)</span>
+            </div>
+            <div id="portfolio-display">
+                <h3>Your Holdings:</h3>
+                <ul></ul>
+                <ul class="margin-info">
+                    <li>Leverage: 10:1</li>
+                    <li>Used Margin: $0.00</li>
+                    <li>Free Margin: $0.00</li>
+                    <li>Margin Level: N/A</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="market-info-container">
+            <div class="event-section">
+                 <h2>Key Information</h2> <!-- Renamed -->
+                 <div class="sentiment-display">
+                     Market Sentiment: <strong id="sentiment-indicator">Neutral</strong>
+                 </div>
+                 <div id="event-description">
+                     <!-- Main event/indicator details -->
+                     <p>Loading market information...</p>
+                 </div>
+            </div>
+
+            <div id="news-feed">
+                 <!-- News headlines added by JS -->
+                 <h4>News Headlines</h4>
+                 <ul><li>Loading news...</li></ul>
+            </div>
+        </div>
+
+        <div class="trading-section">
+            <h2>Market Rates & Trading</h2>
+            <ul id="currency-list">
+                <!-- Currency rates and trade controls will be loaded here -->
+            </ul>
+            <button id="finalize-trades-btn" style="display: none;">Finalize Trades for Round</button> <!-- Initially hidden -->
+        </div>
+
+        <div id="results-display" style="display: none;"> <!-- Initially hidden -->
+            <h2>Round Results</h2>
+            <p id="round-summary">Round P/L: $0.00</p> <!-- Was round-score -->
+            <ul id="result-details">
+                <!-- Result details like total P&L can go here -->
+            </ul>
+            <button id="next-round-btn">Start Next Round</button>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
